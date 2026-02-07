@@ -61,11 +61,6 @@ local function OnAccountsChange(bagName, key, value, _unused, replicated)
                 break
             end
         end
-
-        if not found then
-            -- Handle new account if necessary (less common)
-             -- We might need a label map if we support adding new accounts dynamically
-        end
     end
 end
 

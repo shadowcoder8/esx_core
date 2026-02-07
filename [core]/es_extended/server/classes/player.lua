@@ -333,8 +333,8 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
         end
 
         local minimalAccounts = {}
-        for name, account in pairs(self.accounts) do
-            minimalAccounts[name] = account.money
+        for accountName, account in pairs(self.accounts) do
+            minimalAccounts[accountName] = account.money
         end
 
         return minimalAccounts
@@ -348,9 +348,9 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
     function self.getInventory(minimal)
         if minimal then
             local minimalInventory = {}
-            for name, v in pairs(self.inventory) do
+            for itemName, v in pairs(self.inventory) do
                 if v.count > 0 then
-                    minimalInventory[name] = v.count
+                    minimalInventory[itemName] = v.count
                 end
             end
             return minimalInventory
