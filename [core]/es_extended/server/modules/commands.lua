@@ -749,26 +749,34 @@ ESX.RegisterCommand("players", "admin", function()
 end, true)
 
 ESX.RegisterCommand(
-    {"setdim", "setbucket"},
+    "testphases",
     "admin",
     function(xPlayer, args)
-        SetPlayerRoutingBucket(args.playerId.source, args.dimension)
-        if Config.AdminLogging then
-            ESX.DiscordLogFields("UserActions", "Admin Set Dim /setdim Triggered!", "pink", {
-                { name = "Player", value = xPlayer and xPlayer.name or "Server Console", inline = true },
-                { name = "ID", value = xPlayer and xPlayer.source or "Unknown ID", inline = true },
-                { name = "Target", value = args.playerId.name, inline = true },
-                { name = "Dimension", value = args.dimension, inline = true },
-            })
+        -- Phase 1 Check: State Bag
+        local state = Player(xPlayer.source).state
+        local esxData = state.esx_data
+        local phase1Status = "FAIL"
+        
+        if esxData and esxData.money and esxData.job then
+            phase1Status = "SUCCESS"
         end
+        
+        print(("[INFO] Phase 1 Integration Test: %s"):format(phase1Status))
+        if phase1Status == "FAIL" then
+            print("[INFO] Details: esx_data missing or incomplete.")
+        end
+
+        -- Phase 2 Check: Dirty Flag
+        local isDirty = xPlayer.isDirty
+        print(("[INFO] Phase 2 Integration Test: isDirty = %s"):format(tostring(isDirty)))
+        
+        -- Diagnostic Summary
+        xPlayer.showNotification(("Phase 1: %s | Phase 2: %s"):format(phase1Status, tostring(isDirty)))
     end,
-    true,
+    false,
     {
-        help = TranslateCap("command_setdim"),
-        validate = true,
-        arguments = {
-            { name = "playerId", help = TranslateCap("commandgeneric_playerid"), type = "player" },
-            { name = "dimension", help = TranslateCap("commandgeneric_dimension"), type = "number" },
-        },
+        help = "Test Phase 1 & 2 Integration",
+        validate = false,
+        arguments = {}
     }
 )

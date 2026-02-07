@@ -179,6 +179,9 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
     self.lastPlaytime = self.metadata.lastPlaytime or 0
     self.paycheckEnabled = true
     self.admin = Core.IsPlayerAdmin(playerId)
+    self.isDirty = false -- Lazy Saving Flag
+    self.prioritySave = false -- Track priority saves if needed
+
     if Config.Multichar then
         local startIndex = identifier:find(":", 1)
         if startIndex then

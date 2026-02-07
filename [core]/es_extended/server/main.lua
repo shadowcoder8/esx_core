@@ -362,6 +362,14 @@ function loadESXPlayer(identifier, playerId, isNew)
     -- Trigger Events
     TriggerEvent("esx:playerLoaded", playerId, xPlayer, isNew)
     
+    -- State Bag Broadcast (Final Step)
+    Player(playerId).state:set('esx_data', {
+        money = xPlayer.getMoney(),
+        bank = xPlayer.getAccount('bank').money,
+        job = xPlayer.getJob().name,
+        group = xPlayer.getGroup()
+    }, true)
+    
     legacyUserData.money = xPlayer.getMoney()
     legacyUserData.maxWeight = xPlayer.getMaxWeight()
     legacyUserData.variables = xPlayer.variables or {}
