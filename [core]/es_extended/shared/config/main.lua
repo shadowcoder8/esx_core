@@ -62,6 +62,9 @@ Config.Multichar = GetResourceState("esx_multicharacter") ~= "missing"
 Config.Identity = true -- Select a character identity data before they have loaded in (this happens by default with multichar)
 Config.DistanceGive = 4.0 -- Max distance when giving items, weapons etc.
 
+Config.PlayerSaveInterval = 10 * 60 * 1000 -- 10 minutes
+Config.PrioritySaveThreshold = 50000 -- Immediate save for high-value changes
+
 Config.AdminLogging = false -- Logs the usage of certain commands by those with group.admin ace permissions (default is false)
 
 -------------------------------------
