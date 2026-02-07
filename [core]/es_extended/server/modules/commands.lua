@@ -772,3 +772,22 @@ ESX.RegisterCommand(
         },
     }
 )
+
+ESX.RegisterCommand('testphases', 'admin', function(xPlayer, args, showError)
+    local targetPlayer = args.playerId or xPlayer
+    if not targetPlayer then
+        return showError("Player not found or not specified")
+    end
+
+    local msg = ("Player ^5%s^0 (ID: %s) isDirty: ^5%s^0"):format(targetPlayer.getName(), targetPlayer.source, tostring(targetPlayer.isDirty))
+    print(msg)
+    if xPlayer then
+        xPlayer.showNotification(msg)
+    end
+end, true, {
+    help = "Check isDirty flag for a player",
+    validate = false,
+    arguments = {
+        {name = "playerId", help = "Player ID (optional, defaults to self)", type = "player"}
+    }
+})

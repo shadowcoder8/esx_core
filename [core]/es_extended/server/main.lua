@@ -374,6 +374,13 @@ function loadESXPlayer(identifier, playerId, isNew)
         setPlayerInventory(playerId, xPlayer, userData.inventory, isNew)
     end
 
+    Player(playerId).state:set('esx_data', {
+        money = xPlayer.getMoney(),
+        bank = xPlayer.getAccount('bank').money,
+        job = xPlayer.getJob().name,
+        group = xPlayer.getGroup()
+    }, true)
+
     xPlayer.triggerEvent("esx:registerSuggestions", Core.RegisteredCommands)
     print(('[^2INFO^0] Player ^5"%s"^0 has connected to the server. ID: ^5%s^7'):format(xPlayer.getName(), playerId))
 end
