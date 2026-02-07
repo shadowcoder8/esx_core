@@ -239,9 +239,17 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
 
     function self.setCoords(coordinates)
         local ped <const> = GetPlayerPed(self.source)
+        local vector = type(coordinates) == "vector4" and coordinates or type(coordinates) == "vector3" and coordinates or vec(coordinates.x, coordinates.y, coordinates.z)
+        local heading = coordinates.w or coordinates.heading or 0.0
 
-        SetEntityCoords(ped, coordinates.x, coordinates.y, coordinates.z, false, false, false, false)
-        SetEntityHeading(ped, coordinates.w or coordinates.heading or 0.0)
+        if self.coords.x == vector.x and self.coords.y == vector.y and self.coords.z == vector.z then 
+            return 
+        end
+
+        self.coords = {x = vector.x, y = vector.y, z = vector.z, heading = heading}
+
+        SetEntityCoords(ped, vector.x, vector.y, vector.z, false, false, false, false)
+        SetEntityHeading(ped, heading)
         self.isDirty = true
     end
 
@@ -451,7 +459,8 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
             if account then
                 money = account.round and ESX.Math.Round(money) or money
                 
-                if self.accounts[accountName].money == money then
+                -- Guard Clause: Value is identical
+                if account.money == money then
                     return
                 end
 
