@@ -301,6 +301,10 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
     end
 
     function self.setGroup(newGroup)
+        if self.group == newGroup then
+            return
+        end
+
         local lastGroup = self.group
 
         ExecuteCommand(("remove_principal identifier.%s group.%s"):format(self.license, self.group))
@@ -326,6 +330,10 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
     end
 
     function self.set(k, v)
+        if self.variables[k] == v then
+            return
+        end
+
         self.variables[k] = v
 
         self.triggerEvent('esx:updatePlayerData', 'variables', self.variables)
@@ -422,6 +430,10 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
     end
 
     function self.setName(newName)
+        if self.name == newName then
+            return
+        end
+
         self.name = newName
         Player(self.source).state:set("name", self.name, true)
         self.isDirty = true
@@ -438,6 +450,11 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
 
             if account then
                 money = account.round and ESX.Math.Round(money) or money
+                
+                if self.accounts[accountName].money == money then
+                    return
+                end
+
                 self.accounts[accountName].money = money
 
                 -- Sync via State Bag
@@ -647,6 +664,15 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
 
     function self.setJob(newJob, grade, onDuty)
         grade = tostring(grade)
+        
+        if type(onDuty) ~= "boolean" then
+            onDuty = Config.DefaultJobDuty
+        end
+
+        if self.job.name == newJob and self.job.grade == tonumber(grade) and self.job.onDuty == onDuty then
+            return
+        end
+
         local lastJob = self.job
 
         if not ESX.DoesJobExist(newJob, grade) then
@@ -655,10 +681,6 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
 
         if newJob == "unemployed" then
             onDuty = false
-        end
-
-        if type(onDuty) ~= "boolean" then
-            onDuty = Config.DefaultJobDuty
         end
 
         local jobObject, gradeObject = ESX.Jobs[newJob], ESX.Jobs[newJob].grades[grade]
@@ -979,6 +1001,10 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
                 return error(("xPlayer.setMeta ^5%s^1 should be ^5number^1 or ^5string^1 or ^5table^1!"):format(value))
             end
 
+            if self.metadata[index] == value then
+                return
+            end
+
             self.metadata[index] = value
         else
             if _type ~= "string" then
@@ -990,6 +1016,11 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
             end
 
             self.metadata[index] = type(self.metadata[index]) == "table" and self.metadata[index] or {}
+            
+            if self.metadata[index][value] == subValue then
+                return
+            end
+
             self.metadata[index][value] = subValue
         end
         self.triggerEvent('esx:updatePlayerData', 'metadata', self.metadata)
