@@ -774,20 +774,15 @@ ESX.RegisterCommand(
 )
 
 ESX.RegisterCommand('testphases', 'admin', function(xPlayer, args, showError)
-    local targetPlayer = args.playerId or xPlayer
-    if not targetPlayer then
-        return showError("Player not found or not specified")
-    end
+    local source = xPlayer.source
+    local data = Player(source).state.esx_data
 
-    local msg = ("Player ^5%s^0 (ID: %s) isDirty: ^5%s^0"):format(targetPlayer.getName(), targetPlayer.source, tostring(targetPlayer.isDirty))
-    print(msg)
+    print('^2[ESX Core] Phase Diagnosis^7')
+    print('^4[Phase 1] State Bag Data:^7 ' .. json.encode(data))
+
     if xPlayer then
-        xPlayer.showNotification(msg)
+        print('^4[Phase 2] Dirty Flag:^7 ' .. tostring(xPlayer.isDirty))
+    else
+        print('^1[Error] xPlayer not found!^7')
     end
-end, true, {
-    help = "Check isDirty flag for a player",
-    validate = false,
-    arguments = {
-        {name = "playerId", help = "Player ID (optional, defaults to self)", type = "player"}
-    }
-})
+end, false)
