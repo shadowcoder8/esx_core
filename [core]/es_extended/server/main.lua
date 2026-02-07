@@ -378,6 +378,7 @@ function loadESXPlayer(identifier, playerId, isNew)
         money = xPlayer.getMoney(),
         bank = xPlayer.getAccount('bank').money,
         job = xPlayer.getJob().name,
+        grade_label = xPlayer.getJob().grade_label,
         group = xPlayer.getGroup()
     }, true)
 
@@ -779,8 +780,13 @@ end)
 
 CreateThread(function()
     while true do
-        Wait(Config.PlayerSaveInterval)
-        Core.SavePlayers()
+        Wait(600000) -- 10 Minutes
+        for _, xPlayer in pairs(ESX.Players) do
+            if xPlayer.isDirty then
+                Core.SavePlayer(xPlayer)
+                print(("[INFO] Global Ticker: Auto-Saved Player %s"):format(xPlayer.getName()))
+            end
+        end
     end
 end)
 

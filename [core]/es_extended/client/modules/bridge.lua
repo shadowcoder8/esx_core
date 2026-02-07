@@ -105,3 +105,43 @@ RegisterNetEvent('esx:playerLoaded', function(xPlayer, isNew, skin)
         TriggerEvent('esx:setGroup', state.group)
     end
 end)
+
+-- Task 2: Fix Phase 1 (The Missing Emulator)
+-- esx_data handler for legacy compatibility
+AddStateBagChangeHandler('esx_data', 'player:' .. GetPlayerServerId(PlayerId()), function(bagName, key, value, _unused, replicated)
+    if not value or not ESX.PlayerLoaded then return end
+
+    -- Job Check
+    if ESX.PlayerData.job and value.job ~= ESX.PlayerData.job.name then
+        TriggerEvent('esx:setJob', ESX.PlayerData.job)
+    end
+
+    -- Money/Bank Check
+    local currentMoney, currentBank = 0, 0
+    if ESX.PlayerData.accounts then
+        for _, acc in ipairs(ESX.PlayerData.accounts) do
+            if acc.name == 'money' then currentMoney = acc.money end
+            if acc.name == 'bank' then currentBank = acc.money end
+        end
+
+        if value.money ~= currentMoney then
+            for i, acc in ipairs(ESX.PlayerData.accounts) do
+                if acc.name == 'money' then
+                    ESX.PlayerData.accounts[i].money = value.money
+                    TriggerEvent('esx:setAccountMoney', ESX.PlayerData.accounts[i])
+                    break
+                end
+            end
+        end
+
+        if value.bank ~= currentBank then
+            for i, acc in ipairs(ESX.PlayerData.accounts) do
+                if acc.name == 'bank' then
+                    ESX.PlayerData.accounts[i].money = value.bank
+                    TriggerEvent('esx:setAccountMoney', ESX.PlayerData.accounts[i])
+                    break
+                end
+            end
+        end
+    end
+end)

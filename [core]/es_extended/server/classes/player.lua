@@ -187,6 +187,7 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
             money = self.getMoney(),
             bank = self.getAccount('bank').money,
             job = self.job.name,
+            grade_label = self.job.grade_label,
             group = self.group
         }, true)
     end
