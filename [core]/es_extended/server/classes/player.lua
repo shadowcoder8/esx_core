@@ -180,6 +180,17 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
     self.paycheckEnabled = true
     self.admin = Core.IsPlayerAdmin(playerId)
     self.isDirty = false -- Lazy Saving Flag
+
+    local function SyncESXData()
+        local state = Player(self.source).state
+        state:set('esx_data', {
+            money = self.getMoney(),
+            bank = self.getAccount('bank').money,
+            job = self.job.name,
+            group = self.group
+        }, true)
+    end
+
     if Config.Multichar then
         local startIndex = identifier:find(":", 1)
         if startIndex then
@@ -204,6 +215,7 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
     stateBag:set("name", self.name, true)
     SafeStateSet(stateBag, "accounts", self.accounts)
     SafeStateSet(stateBag, "inventory", self.inventory)
+    SafeStateSet(stateBag, "loadout", self.loadout)
     
     -- Mark as loaded at the END of creation (or handled in main.lua)
     stateBag:set("esx_loaded", true, true)
@@ -300,9 +312,12 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
         self.triggerEvent("esx:setGroup", self.group, lastGroup)
         
         Player(self.source).state:set("group", self.group, true)
+        
+        SyncESXData()
 
         ExecuteCommand(("add_principal identifier.%s group.%s"):format(self.license, self.group))
         print(("[INFO] Priority Save triggered for Player %s (Reason: Group Change)"):format(self.name))
+        self.isDirty = true
         Core.SavePlayer(self)
     end
 
@@ -431,6 +446,8 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
                 -- Legacy Events (Optional: Bridge handles client, but Server events might be needed for other scripts)
                 self.triggerEvent("esx:setAccountMoney", account) -- Bridge will also fire this on client
                 TriggerEvent("esx:setAccountMoney", self.source, accountName, money, reason)
+                
+                SyncESXData()
 
                 if money >= Config.PrioritySaveThreshold then
                      print(("[INFO] Priority Save triggered for Player %s (Reason: High Value Set Money %s)"):format(self.name, money))
@@ -462,6 +479,8 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
 
                 self.triggerEvent("esx:setAccountMoney", account)
                 TriggerEvent("esx:addAccountMoney", self.source, accountName, money, reason)
+                
+                SyncESXData()
 
                 if money >= Config.PrioritySaveThreshold then
                      print(("[INFO] Priority Save triggered for Player %s (Reason: High Value Add Money %s)"):format(self.name, money))
@@ -498,6 +517,8 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
 
                 self.triggerEvent("esx:setAccountMoney", account)
                 TriggerEvent("esx:removeAccountMoney", self.source, accountName, money, reason)
+                
+                SyncESXData()
 
                 if money >= Config.PrioritySaveThreshold then
                      print(("[INFO] Priority Save triggered for Player %s (Reason: High Value Remove Money %s)"):format(self.name, money))
@@ -665,8 +686,11 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
         -- self.triggerEvent("esx:setJob", self.job, lastJob)
         
         SafeStateSet(Player(self.source).state, "job", self.job)
+        
+        SyncESXData()
 
         print(("[INFO] Priority Save triggered for Player %s (Reason: Job Change)"):format(self.name))
+        self.isDirty = true
         Core.SavePlayer(self)
     end
 
@@ -685,6 +709,7 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
             GiveWeaponToPed(GetPlayerPed(self.source), joaat(weaponName), ammo, false, false)
             self.triggerEvent("esx:addInventoryItem", weaponLabel, false, true)
             self.triggerEvent("esx:addLoadoutItem", weaponName, weaponLabel, ammo)
+            SafeStateSet(Player(self.source).state, "loadout", self.loadout)
             self.isDirty = true
         end
     end
@@ -701,6 +726,7 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
                     local componentHash = ESX.GetWeaponComponent(weaponName, weaponComponent).hash
                     GiveWeaponComponentToPed(GetPlayerPed(self.source), joaat(weaponName), componentHash)
                     self.triggerEvent("esx:addInventoryItem", component.label, false, true)
+                    SafeStateSet(Player(self.source).state, "loadout", self.loadout)
                     self.isDirty = true
                 end
             end
@@ -713,6 +739,7 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
         if weapon then
             weapon.ammo = weapon.ammo + ammoCount
             SetPedAmmo(GetPlayerPed(self.source), joaat(weaponName), weapon.ammo)
+            SafeStateSet(Player(self.source).state, "loadout", self.loadout)
             self.isDirty = true
         end
     end
@@ -732,6 +759,7 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
                 self.removeWeapon(weaponName)
             end
         else
+            SafeStateSet(Player(self.source).state, "loadout", self.loadout)
             self.isDirty = true
         end
     end
@@ -746,6 +774,7 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
                 self.loadout[loadoutNum].tintIndex = weaponTintIndex
                 self.triggerEvent("esx:setWeaponTint", weaponName, weaponTintIndex)
                 self.triggerEvent("esx:addInventoryItem", weaponObject.tints[weaponTintIndex], false, true)
+                SafeStateSet(Player(self.source).state, "loadout", self.loadout)
                 self.isDirty = true
             end
         end
@@ -788,6 +817,7 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
         if weaponLabel then
             self.triggerEvent("esx:removeInventoryItem", weaponLabel, false, true)
             self.triggerEvent("esx:removeLoadoutItem", weaponName, weaponLabel)
+            SafeStateSet(Player(self.source).state, "loadout", self.loadout)
             self.isDirty = true
         end
     end
@@ -809,6 +839,7 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
 
                     self.triggerEvent("esx:removeWeaponComponent", weaponName, weaponComponent)
                     self.triggerEvent("esx:removeInventoryItem", component.label, false, true)
+                    SafeStateSet(Player(self.source).state, "loadout", self.loadout)
                     self.isDirty = true
                 end
             end
@@ -821,6 +852,7 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
         if weapon then
             weapon.ammo = weapon.ammo - ammoCount
             SetPedAmmo(GetPlayerPed(self.source), joaat(weaponName), weapon.ammo)
+            SafeStateSet(Player(self.source).state, "loadout", self.loadout)
             self.isDirty = true
         end
     end
