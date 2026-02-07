@@ -179,6 +179,7 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
     self.lastPlaytime = self.metadata.lastPlaytime or 0
     self.paycheckEnabled = true
     self.admin = Core.IsPlayerAdmin(playerId)
+    self.isDirty = false -- Lazy Saving Flag
     if Config.Multichar then
         local startIndex = identifier:find(":", 1)
         if startIndex then
@@ -229,6 +230,7 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
 
         SetEntityCoords(ped, coordinates.x, coordinates.y, coordinates.z, false, false, false, false)
         SetEntityHeading(ped, coordinates.w or coordinates.heading or 0.0)
+        self.isDirty = true
     end
 
     function self.getCoords(vector, heading)
@@ -300,6 +302,8 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
         Player(self.source).state:set("group", self.group, true)
 
         ExecuteCommand(("add_principal identifier.%s group.%s"):format(self.license, self.group))
+        print(("[INFO] Priority Save triggered for Player %s (Reason: Group Change)"):format(self.name))
+        Core.SavePlayer(self)
     end
 
     function self.getGroup()
@@ -310,6 +314,7 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
         self.variables[k] = v
 
         self.triggerEvent('esx:updatePlayerData', 'variables', self.variables)
+        self.isDirty = true
     end
 
     function self.get(k)
@@ -328,8 +333,8 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
         end
 
         local minimalAccounts = {}
-        for name, account in pairs(self.accounts) do
-            minimalAccounts[name] = account.money
+        for accountName, account in pairs(self.accounts) do
+            minimalAccounts[accountName] = account.money
         end
 
         return minimalAccounts
@@ -343,9 +348,9 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
     function self.getInventory(minimal)
         if minimal then
             local minimalInventory = {}
-            for name, v in pairs(self.inventory) do
+            for itemName, v in pairs(self.inventory) do
                 if v.count > 0 then
-                    minimalInventory[name] = v.count
+                    minimalInventory[itemName] = v.count
                 end
             end
             return minimalInventory
@@ -404,6 +409,7 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
     function self.setName(newName)
         self.name = newName
         Player(self.source).state:set("name", self.name, true)
+        self.isDirty = true
     end
 
     function self.setAccountMoney(accountName, money, reason)
@@ -425,6 +431,13 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
                 -- Legacy Events (Optional: Bridge handles client, but Server events might be needed for other scripts)
                 self.triggerEvent("esx:setAccountMoney", account) -- Bridge will also fire this on client
                 TriggerEvent("esx:setAccountMoney", self.source, accountName, money, reason)
+
+                if money >= Config.PrioritySaveThreshold then
+                     print(("[INFO] Priority Save triggered for Player %s (Reason: High Value Set Money %s)"):format(self.name, money))
+                     Core.SavePlayer(self)
+                else
+                     self.isDirty = true
+                end
             else
                 error(("Tried To Set Invalid Account ^5%s^1 For Player ^5%s^1!"):format(accountName, self.playerId))
             end
@@ -449,6 +462,13 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
 
                 self.triggerEvent("esx:setAccountMoney", account)
                 TriggerEvent("esx:addAccountMoney", self.source, accountName, money, reason)
+
+                if money >= Config.PrioritySaveThreshold then
+                     print(("[INFO] Priority Save triggered for Player %s (Reason: High Value Add Money %s)"):format(self.name, money))
+                     Core.SavePlayer(self)
+                else
+                     self.isDirty = true
+                end
             else
                 error(("Tried To Set Add To Invalid Account ^5%s^1 For Player ^5%s^1!"):format(accountName, self.playerId))
             end
@@ -478,6 +498,13 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
 
                 self.triggerEvent("esx:setAccountMoney", account)
                 TriggerEvent("esx:removeAccountMoney", self.source, accountName, money, reason)
+
+                if money >= Config.PrioritySaveThreshold then
+                     print(("[INFO] Priority Save triggered for Player %s (Reason: High Value Remove Money %s)"):format(self.name, money))
+                     Core.SavePlayer(self)
+                else
+                     self.isDirty = true
+                end
             else
                 error(("Tried To Set Add To Invalid Account ^5%s^1 For Player ^5%s^1!"):format(accountName, self.playerId))
             end
@@ -504,6 +531,7 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
             TriggerEvent("esx:onAddInventoryItem", self.source, item.name, item.count)
             -- Removed direct TriggerClientEvent, Bridge handles it.
             -- self.triggerEvent("esx:addInventoryItem", item.name, item.count) 
+            self.isDirty = true
         end
     end
 
@@ -524,6 +552,7 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
                     TriggerEvent("esx:onRemoveInventoryItem", self.source, item.name, item.count)
                     -- Removed direct TriggerClientEvent, Bridge handles it.
                     -- self.triggerEvent("esx:removeInventoryItem", item.name, item.count)
+                    self.isDirty = true
                 end
             else
                 error(("Player ID:^5%s Tried remove a Invalid count -> %s of %s"):format(self.playerId, count, itemName))
@@ -636,6 +665,9 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
         -- self.triggerEvent("esx:setJob", self.job, lastJob)
         
         SafeStateSet(Player(self.source).state, "job", self.job)
+
+        print(("[INFO] Priority Save triggered for Player %s (Reason: Job Change)"):format(self.name))
+        Core.SavePlayer(self)
     end
 
     function self.addWeapon(weaponName, ammo)
@@ -653,6 +685,7 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
             GiveWeaponToPed(GetPlayerPed(self.source), joaat(weaponName), ammo, false, false)
             self.triggerEvent("esx:addInventoryItem", weaponLabel, false, true)
             self.triggerEvent("esx:addLoadoutItem", weaponName, weaponLabel, ammo)
+            self.isDirty = true
         end
     end
 
@@ -668,6 +701,7 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
                     local componentHash = ESX.GetWeaponComponent(weaponName, weaponComponent).hash
                     GiveWeaponComponentToPed(GetPlayerPed(self.source), joaat(weaponName), componentHash)
                     self.triggerEvent("esx:addInventoryItem", component.label, false, true)
+                    self.isDirty = true
                 end
             end
         end
@@ -679,6 +713,7 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
         if weapon then
             weapon.ammo = weapon.ammo + ammoCount
             SetPedAmmo(GetPlayerPed(self.source), joaat(weaponName), weapon.ammo)
+            self.isDirty = true
         end
     end
 
@@ -696,6 +731,8 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
             if weaponConfig.throwable then
                 self.removeWeapon(weaponName)
             end
+        else
+            self.isDirty = true
         end
     end
 
@@ -709,6 +746,7 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
                 self.loadout[loadoutNum].tintIndex = weaponTintIndex
                 self.triggerEvent("esx:setWeaponTint", weaponName, weaponTintIndex)
                 self.triggerEvent("esx:addInventoryItem", weaponObject.tints[weaponTintIndex], false, true)
+                self.isDirty = true
             end
         end
     end
@@ -750,6 +788,7 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
         if weaponLabel then
             self.triggerEvent("esx:removeInventoryItem", weaponLabel, false, true)
             self.triggerEvent("esx:removeLoadoutItem", weaponName, weaponLabel)
+            self.isDirty = true
         end
     end
 
@@ -770,6 +809,7 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
 
                     self.triggerEvent("esx:removeWeaponComponent", weaponName, weaponComponent)
                     self.triggerEvent("esx:removeInventoryItem", component.label, false, true)
+                    self.isDirty = true
                 end
             end
         end
@@ -781,6 +821,7 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
         if weapon then
             weapon.ammo = weapon.ammo - ammoCount
             SetPedAmmo(GetPlayerPed(self.source), joaat(weaponName), weapon.ammo)
+            self.isDirty = true
         end
     end
 
@@ -920,6 +961,7 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
             self.metadata[index][value] = subValue
         end
         self.triggerEvent('esx:updatePlayerData', 'metadata', self.metadata)
+        self.isDirty = true
     end
 
     function self.clearMeta(index, subValues)
@@ -968,6 +1010,7 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
             return error(("xPlayer.clearMeta ^5subValues^1 should be ^5string^1 or ^5table^1, received ^5%s^1!"):format(type(subValues)))
         end
         self.triggerEvent('esx:updatePlayerData', 'metadata', self.metadata)
+        self.isDirty = true
     end
 
     function self.executeCommand(command)
