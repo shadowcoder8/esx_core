@@ -211,6 +211,13 @@ function Core.SavePlayer(xPlayer, cb)
         return cb and cb()
     end
 
+    if not xPlayer.isDirty then
+        return cb and cb()
+    end
+
+    -- Optimistic Locking: Assume success to prevent race conditions during SQL I/O
+    xPlayer.isDirty = false
+
     updateHealthAndArmorInMetadata(xPlayer)
     local parameters <const> = {
         json.encode(xPlayer.getAccounts(true)),
@@ -231,6 +238,10 @@ function Core.SavePlayer(xPlayer, cb)
             if affectedRows == 1 then
                 print(('[^2INFO^7] Saved player ^5"%s^7"'):format(xPlayer.name))
                 TriggerEvent("esx:playerSaved", xPlayer.playerId, xPlayer)
+            else
+                -- Save Failed: Revert dirty status to ensure retry
+                print(('[^1ERROR^7] Save failed for player ^5"%s^7". Data marked dirty for retry.'):format(xPlayer.name))
+                xPlayer.isDirty = true
             end
             if cb then
                 cb()

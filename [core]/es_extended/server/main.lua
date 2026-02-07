@@ -770,6 +770,43 @@ AddEventHandler("txAdmin:events:serverShuttingDown", function()
     Core.SavePlayers()
 end)
 
+CreateThread(function()
+    while true do
+        Wait(Config.PlayerSaveInterval)
+        Core.SavePlayers()
+    end
+end)
+
+AddEventHandler('onResourceStop', function(resourceName)
+    if resourceName == GetCurrentResourceName() then
+        local dirtyCount = 0
+        local savedCount = 0
+        local promises = {}
+
+        for _, xPlayer in pairs(ESX.Players) do
+            if xPlayer.isDirty then
+                dirtyCount = dirtyCount + 1
+                local p = promise.new()
+                table.insert(promises, p)
+                
+                Core.SavePlayer(xPlayer, function()
+                    savedCount = savedCount + 1
+                    p:resolve()
+                end)
+            end
+        end
+
+        if dirtyCount > 0 then
+            print(("[INFO] Shutdown Guard: Saving %d dirty players..."):format(dirtyCount))
+            
+            -- Wait for all saves or timeout
+            Citizen.Await(promise.all(promises))
+            
+            print(("[INFO] Shutdown Guard: Complete. Success: %d/%d"):format(savedCount, dirtyCount))
+        end
+    end
+end)
+
 local DoNotUse = {
     ["essentialmode"] = true,
     ["es_admin2"] = true,
